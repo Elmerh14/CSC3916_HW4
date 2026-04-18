@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const User = require('./Users');
 const Movie = require('./Movies');
+const Review = require('./Reviews')
 
 const app = express();
 app.use(cors());
@@ -145,31 +146,44 @@ router.route('/movies')
   });
 
 // Routes for movies/parameter title in my case
+
 router.route('/movies/:title')
   .get(authJwtController.isAuthenticated, async (req, res) => {
     try {
-      const movie = await Movie.findOne({ title: req.params.title });
+      // check if reviews=true was passed as query param
+      if (req.query.reviews === 'true') {
+        // do the $lookup aggregation to join movie + reviews
+        const movieWithReviews = await Movie.aggregate([
+          { $match: { title: req.params.title } },
+          {
+            $lookup: {
+              from: 'reviews',        // the Reviews collection name in MongoDB
+              localField: '_id',      // Movie's _id
+              foreignField: 'movieId', // Review's movieId field
+              as: 'reviews'           // attach results as 'reviews' array
+            }
+          }
+        ]);
 
-      if (!movie) {
-        return res.status(404).json({
-          success: false,
-          message: 'Movie not found.'
-        });
+        if (!movieWithReviews.length) {
+          return res.status(404).json({ success: false, message: 'Movie not found.' });
+        }
+
+        return res.status(200).json({ success: true, movie: movieWithReviews[0] });
+
+      } else {
+        const movie = await Movie.findOne({ title: req.params.title });
+        if (!movie) {
+          return res.status(404).json({ success: false, message: 'Movie not found.' });
+        }
+        return res.status(200).json({ success: true, movie: movie });
       }
 
-      res.status(200).json({
-        success: true,
-        movie: movie
-      });
-
     } catch (err) {
-      console.error(err);
-      res.status(500).json({
-        success: false,
-        message: 'Error retrieving movie from database.'
-      });
+      res.status(500).json({ success: false, message: err.message });
     }
   })
+
 
   .put(authJwtController.isAuthenticated, async (req, res) => {
     try {
