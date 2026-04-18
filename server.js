@@ -342,6 +342,41 @@ router.route('/reviews')
     }
   })
 
+  .put(authJwtController.isAuthenticated, async (req, res) => {
+    try {
+      const review = await Review.findOneAndUpdate(
+        {
+          movieId: req.body.movieId,
+          username: req.body.username
+        },
+        {
+          review: req.body.review,
+          rating: req.body.rating
+        },
+        { new: true }
+      );
+
+      if (!review) {
+        return res.status(404).json({
+          success: 'false',
+          message: 'Review not found.'
+        });
+      }
+
+      return res.status(200).json({
+        success: 'true',
+        message: 'Review updated!',
+        review: review
+      });
+    }
+    catch (err) {
+      return res.status(500).json({
+        success: 'false',
+        message: err.message
+      });
+    }
+  })
+
   .delete(authJwtController.isAuthenticated, async (req, res) => {
     try {
       const review = await Review.findOneAndDelete({ movieId: req.body.movieId });
