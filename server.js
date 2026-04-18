@@ -305,6 +305,20 @@ router.route('/reviews')
           message: 'invalid post request. Not all fileds provided.'
         })
       }
+
+      // avoid same user duplicate reviews with this 
+      const existingReview = await Review.findOne({
+        movieId: req.body.movieId,
+        username: req.body.username
+      });
+
+      if (existingReview) {
+        return res.status(409).json({
+          success: 'false',
+          message: 'You have already reviewed this movie.'
+        });
+      }
+
       const newReview = new Review({
         movieId: req.body.movieId,
         username: req.body.username,
